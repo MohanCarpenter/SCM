@@ -1,0 +1,6 @@
+framework module Pods_ShaktiChat {
+  umbrella header "Pods-ShaktiChat-umbrella.h"
+
+  export *
+  module * { export * }
+}

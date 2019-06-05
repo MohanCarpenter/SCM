@@ -131,7 +131,7 @@ class MenuVendor: UIViewController, UITableViewDelegate, UITableViewDataSource {
         params["sap_id"] = userType + id
         
         
-        Http.instance().json("http://shakti.techinventions.in/shaktichat/api/user/logout", params, "POST", ai: true, popup: true, prnt: true, nil) { (json, params) in
+        Http.instance().json(WebServices.logout, params, "POST", ai: true, popup: true, prnt: true, nil) { (json, params) in
             if (json != nil) {
                 print(json!)
                 let defaults = UserDefaults.standard
@@ -144,7 +144,8 @@ class MenuVendor: UIViewController, UITableViewDelegate, UITableViewDataSource {
                 defaults.removeObject(forKey: "ContactJson")
 
                 defaults.synchronize()
-                
+                UIApplication.shared.applicationIconBadgeNumber = 0
+
                 self.sideMenuViewController.hideViewController()
                 self.sideMenuViewController.setContentViewController(self.storyboard?.instantiateViewController(withIdentifier: "Signin"), animated: true)
             }

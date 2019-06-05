@@ -7,8 +7,275 @@
 //
 
 import UIKit
-import FMDB
 
+class DBManagerChat: NSObject {
+    
+    var db: OpaquePointer?
+    var statement: OpaquePointer?
+    static let sharedInstance: DBManagerChat = DBManagerChat()
+    
+    internal let SQLITE_STATIC = unsafeBitCast(0, to: sqlite3_destructor_type.self)
+    internal let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+    var pathToDatabase: String!
+    
+    override init() {
+        super.init()
+        
+        let documentsDirectory = (NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0] as NSString) as String
+        pathToDatabase = documentsDirectory.appending("/chatName.db")
+        print("pathToDatabase --->",pathToDatabase)
+    }
+    
+    
+    func CreateOpenDB() { //Create/open database.
+        
+        //        let fileURL = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+        //            .appendingPathComponent("chatName.db")
+        
+        // open database
+        if sqlite3_open(pathToDatabase, &db) == SQLITE_OK {
+            print("error opening database")
+            
+            if sqlite3_exec(db, "create table if not exists ChatTable (Incid integer primary key autoincrement not null, delivery_type text not null, direction text not null, downloading text not null, file_path text not null, group_id text not null, id text not null, msg text not null, msg_from text not null, msg_timestamp text not null, msg_to text not null, msg_type text not null, name text not null, pk_chat_id text not null, status text not null, topic text not null, topic_id text not null, xmpp_user text not null, date text not null,extra text not null, file text not null, file_name text not null,group_name text not null,time text not null, type text not null, reply_id text not null)", nil, nil, nil) != SQLITE_OK {
+                print("CreateTable error creating table: \(sqlite3_errmsg(db)!)")
+            }else {
+                print("CreateTable creating successfull")
+            }
+            //   closeDatabase()
+        }else {
+            
+            print("CreateTable error creating table: \(sqlite3_errmsg(db)!)")
+            
+        }
+    }
+    
+    func closeDatabase() {
+        
+        //        if sqlite3_close(db) != SQLITE_OK {
+        //            print("error closing database")
+        //        }
+        //        db = nil
+    }
+    
+    func deleteMessage(query: String, completionHandler: @escaping (Any?) -> Swift.Void){ //Use sqlite3_prepare_v2 to prepare SQL with ? placeholder to which we'll bind value.
+        print(" query--\(query)")
+        // open database
+        if sqlite3_open(pathToDatabase!, &db) == SQLITE_OK {
+            if sqlite3_prepare(db, query, -1, &statement, nil) == SQLITE_OK{
+                if sqlite3_step(statement) == SQLITE_DONE{
+                    print("Successfully deleted row.")
+                    closeDatabase()
+                    completionHandler(1)
+                }
+            }
+            
+            if sqlite3_finalize(statement) != SQLITE_OK {
+                let errmsg = String(cString: sqlite3_errmsg(db)!)
+                closeDatabase()
+                completionHandler(nil)
+                print("error finalizing prepared statement: \(errmsg)")
+            }
+            
+            
+        }
+        
+    }
+    
+    func prepareToInsert(query: String, completionHandler: @escaping (Any?) -> Swift.Void) { //Use sqlite3_prepare_v2 to prepare SQL with ? placeholder to which we'll bind value.
+        //"insert into test (name) values (?)" //prepareStatement
+        //print("query-\(query)-")
+        //        let fileURL = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+        //            .appendingPathComponent(nameDatabase)
+     //   print(" query--\(query)")
+        // open database
+        if sqlite3_open(pathToDatabase!, &db) == SQLITE_OK {
+            if sqlite3_prepare_v2(db, query, -1, &statement, nil) != SQLITE_OK {
+                let errmsg = String(cString: sqlite3_errmsg(db)!)
+                print("error preparing insert: \(errmsg)")
+            }
+            
+            if sqlite3_step(statement) != SQLITE_DONE {
+                let errmsg = String(cString: sqlite3_errmsg(db)!)
+                print("failure inserting foo: \(errmsg)")
+                completionHandler(nil)
+                
+            }else {
+                completionHandler(1)
+            }
+          
+        }
+        
+    }
+    
+    
+    
+    
+    
+    func DatabaseToGatValues(query: String, completionHandler: (NSMutableArray?) -> Void) { //Prepare new statement for selecting values from table and loop through retrieving the values:
+        print("query select: \(query)")
+        
+        //"select id, name from test"
+        if sqlite3_open(pathToDatabase!, &db) == SQLITE_OK {
+            let arr = NSMutableArray()
+
+            if sqlite3_prepare_v2(db, query, -1, &statement, nil) != SQLITE_OK {
+                let errmsg = String(cString: sqlite3_errmsg(db)!)
+                print("error preparing select: \(errmsg)")
+                completionHandler(nil)
+            } else {
+                
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    
+                    //   var y: Int32 = 0
+                    let dictChat = NSMutableDictionary()
+                    dictChat["IncId"] = sqlite3_column_int64(statement, 0)
+//                    if let cName = sqlite3_column_text(statement, 1) {
+//                        dictChat["bubblearrow"] = String(cString: cName)
+//                    }
+//                    
+//                    if let cName = sqlite3_column_text(statement, 2) {
+//                        dictChat["dateview"] = String(cString: cName)
+//                    }
+                    if let cName = sqlite3_column_text(statement, 1) {
+                        dictChat["delivery_type"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 2) {
+                        dictChat["direction"] = String(cString: cName)
+                    }
+                    
+                    if let cName = sqlite3_column_text(statement, 3) {
+                        dictChat["downloading"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 4) {
+                        dictChat["file_path"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 5) {
+                        dictChat["group_id"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 6) {
+                        dictChat["id"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 7) {
+                        dictChat["msg"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 8) {
+                        dictChat["msg_from"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 9) {
+                        dictChat["msg_timestamp"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 10) {
+                        dictChat["msg_to"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 11) {
+                        dictChat["msg_type"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 12) {
+                        dictChat["name"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 13) {
+                        dictChat["pk_chat_id"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 14) {
+                        dictChat["status"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 15) {
+                        dictChat["topic"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 16) {
+                        dictChat["topic_id"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 17) {
+                        dictChat["xmpp_user"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 18) {
+                        dictChat["date"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 19) {
+                        dictChat["extra"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 20) {
+                        dictChat["file"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 21) {
+                        dictChat["file_name"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 22) {
+                        dictChat["group_name"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 23) {
+                        dictChat["time"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 24) {
+                        dictChat["type"] = String(cString: cName)
+                    }
+                    if let cName = sqlite3_column_text(statement, 25) {
+                        dictChat["reply_id"] = String(cString: cName)
+                    }
+                    
+                    
+                    arr.add(dictChat)
+                    //   var str = ""
+                    //   print("record -\(str)-")
+                    //uploadGeoTagPicture(dictOffline: dict)
+                    
+                }
+                completionHandler(arr)
+
+            }
+            
+            
+//            if sqlite3_finalize(statement) != SQLITE_OK {
+//                let errmsg = String(cString: sqlite3_errmsg(db)!)
+//                completionHandler(nil)
+//                print("error finalizing prepared statement: \(errmsg)")
+//            }else {
+//            }
+
+         //   print("arr----\(arr)")
+        }else {
+            completionHandler(nil)
+        }
+        //  statement = nil
+        // completionHandler(&statement, db)
+        
+    }
+    
+    func getLastId(query:String) -> Int {
+        var id = 0 // "select * from ChatTable"
+        if sqlite3_open(pathToDatabase!, &db) == SQLITE_OK {
+            
+            if sqlite3_prepare_v2(db, query, -1, &statement, nil) != SQLITE_OK {
+                let errmsg = String(cString: sqlite3_errmsg(db)!)
+                print("error preparing select: \(errmsg)")
+            }
+            
+            while sqlite3_step(statement) == SQLITE_ROW {
+                
+                id = id + 1
+                //                    let dictChat = NSMutableDictionary()
+                //                    dictChat.setValue(Int(results.int(forColumn: "IncId")), forKey: "IncId")
+            }
+           // sqlite3_finalize(statement)
+            
+            
+            closeDatabase()
+            if sqlite3_finalize(statement) != SQLITE_OK {
+                let errmsg = String(cString: sqlite3_errmsg(db)!)
+                print("error finalizing prepared statement: \(errmsg)")
+            }
+            return id
+        }else {
+            
+        }
+        return id
+        
+    }
+    
+    /////
+}
+
+/*
 class DBManager: NSObject {
 
     let field_MovieID = "movieID"
@@ -241,7 +508,7 @@ class DBManager: NSObject {
     
     
     
-    func insertChatData(query : String) {
+    func insertChatData(query : String , completionHandler: @escaping (Any?) -> Swift.Void) {
         
         
         if openDatabase() {
@@ -258,7 +525,13 @@ class DBManager: NSObject {
             if !database.executeStatements(query) {
                 print("Failed to insert initial data into the database. -----\(query)---")
                 print(database.lastError(), database.lastErrorMessage())
+                completionHandler(nil)
+
+            }else {
+                completionHandler(1)
+
             }
+            
             database.close()
             
         }
@@ -266,6 +539,40 @@ class DBManager: NSObject {
         
     }
     
+    func getChatHistoryCount(query:String,values: [Any]?) -> Int { // , completionHandler: @escaping (Any?) -> Swift.Void
+      //  let arr = NSMutableArray()
+        // var movies: [MovieInfo]!
+        var diii = 0
+        if openDatabase() {
+            do {
+                
+                let results = try database.executeQuery(query, values: values)
+            
+
+              //  diii = Int(results.columnCount)
+                
+                while results.next() {
+                    print("id --\(Int(results.int(forColumn: "IncId")))")
+                    diii = diii + 1
+                }
+                if diii > 0 {
+                    print("query ---->\(query)<----values---->\(String(describing: values))<-- count-->\(diii)-")
+                }
+
+               // completionHandler(diii)
+            }
+            catch {
+               // completionHandler(diii)
+                print(error.localizedDescription)
+            }
+            
+            database.close()
+            return diii
+
+        }
+           return 0
+        //     return arr
+    }
     func getChatHistory(query:String,values: [Any]?, completionHandler: @escaping (Any?) -> Swift.Void)  {
         let arr = NSMutableArray()
        // var movies: [MovieInfo]!
@@ -507,3 +814,4 @@ struct MovieInfo {
     var watched: Bool!
     var likes: Int!
 }
+*/

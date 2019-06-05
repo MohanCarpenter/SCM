@@ -1397,11 +1397,13 @@ class Http: NSObject {
     }
     
     class func startActivityIndicator () {
-        self.performSelector(inBackground: #selector(Http.startActivityIndicatorThread), with: nil)
+        ActivityIndicator.sharedInstance.showActivityIndicator()
+        //self.performSelector(inBackground: #selector(Http.startActivityIndicatorThread), with: nil)
     }
     
     class func stopActivityIndicator () {
-        self.performSelector(inBackground: #selector(Http.stopActivityIndicatorThread), with: nil)
+        ActivityIndicator.sharedInstance.hideActivityIndicator()
+        //self.performSelector(inBackground: #selector(Http.stopActivityIndicatorThread), with: nil)
     }
     
     func startActivityIndicator () {
@@ -1748,7 +1750,11 @@ extension String {
         
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = formate
-        return dateFormatter.date(from: self)!
+        if dateFormatter.date(from: self) != nil {
+            return dateFormatter.date(from: self)!
+        }else {
+            return Date()
+        }
     }
     
     func imageName () -> String {
